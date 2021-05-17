@@ -13,3 +13,9 @@ docs-target/
 /test_lib/
 /testbuild/
 rocketchip.jar
+
+# User specific ignores
+*.dsn
+*.trn
+*.vcd
+.simvision/
