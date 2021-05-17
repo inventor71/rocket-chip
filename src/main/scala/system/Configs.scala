@@ -21,7 +21,32 @@ class BaseConfig extends Config(
   new BaseSubsystemConfig()
 )
 
+class SratchpadOnlyRocketConfig extends Config(
+  new WithNMemoryChannels(0) ++
+  new WithNBanks(0) ++
+  new WithScratchpadsOnly() ++
+  new WithNoMemPort() ++
+  new WithNoMMIOPort() ++
+  new WithNoSlavePort() ++
+  new WithTimebase(BigInt(1000000)) ++ // 1 MHz
+  new WithDTS("freechips,rocketchip-unknown", Nil) ++
+  new WithNExtTopInterrupts(2) ++
+  new BaseSubsystemConfig()
+)
+
+class NoAXIBaseConfig extends Config(
+  new WithNoMemPort() ++
+  new WithNoMMIOPort() ++
+  new WithNoSlavePort() ++
+  new WithTimebase(BigInt(1000000)) ++ // 1 MHz
+  new WithDTS("freechips,rocketchip-unknown", Nil) ++
+  new WithNExtTopInterrupts(2) ++
+  new BaseSubsystemConfig()
+)
+
 class DefaultConfig extends Config(new WithNBigCores(1) ++ new WithCoherentBusTopology ++ new BaseConfig)
+class NoAXIConfig extends Config(new WithNBigCores(1) ++ new WithCoherentBusTopology ++ new NoAXIBaseConfig)
+class SratchpadOnlyConfig extends Config(new WithNBigCores(1) ++ new WithCoherentBusTopology ++ new SratchpadOnlyRocketConfig)
 
 class DefaultBufferlessConfig extends Config(new WithBufferlessBroadcastHub ++ new DefaultConfig)
 class DefaultSmallConfig extends Config(new WithNSmallCores(1) ++ new WithCoherentBusTopology ++ new BaseConfig)
@@ -84,3 +109,5 @@ class MMIOPortOnlyConfig extends Config(
 
 class BaseFPGAConfig extends Config(new BaseConfig ++ new WithCoherentBusTopology)
 class DefaultFPGAConfig extends Config(new WithNSmallCores(1) ++ new BaseFPGAConfig)
+class DefaultConfigRBB extends Config(new WithJtagDTMSystem ++ new DefaultConfig)
+class NoAXIConfigRBB extends Config(new WithJtagDTMSystem ++ new NoAXIConfig)
