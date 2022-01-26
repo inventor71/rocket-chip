@@ -31,12 +31,12 @@ class IBuf(implicit p: Parameters) extends CoreModule {
   require(decodeWidth == 1)
 
   val n = fetchWidth - 1
-  val nBufValid = if (n == 0) UInt(0) else Reg(init=UInt(0, log2Ceil(fetchWidth)))
+  val nBufValid = if (n == 0) UInt(0) else Reg(init=UInt(0, log2Ceil(fetchWidth))) // fetchWidth == 1 or 2
   val buf = Reg(io.imem.bits)
   val ibufBTBResp = Reg(new BTBResp)
   val pcWordMask = UInt(coreInstBytes*fetchWidth-1, vaddrBitsExtended)
 
-  val pcWordBits = io.imem.bits.pc.extract(log2Ceil(fetchWidth*coreInstBytes)-1, log2Ceil(coreInstBytes))
+  val pcWordBits = io.imem.bits.pc.extract(log2Ceil(fetchWidth*coreInstBytes)-1, log2Ceil(coreInstBytes)) // from util/package.scala. when fetchWidth == 1, pcWordBits == 0.
   val nReady = Wire(init = UInt(0, log2Ceil(fetchWidth+1)))
   val nIC = Mux(io.imem.bits.btb.taken, io.imem.bits.btb.bridx +& 1, UInt(fetchWidth)) - pcWordBits
   val nICReady = nReady - nBufValid
