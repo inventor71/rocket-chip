@@ -1,2 +1,2 @@
 -Dsbt.sourcemode=true
--Dsbt.workspace=$PWD
+-Dsbt.workspace=/home/jihoon.park/Project/riscv-project/rocket-chip

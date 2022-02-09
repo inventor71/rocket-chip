@@ -253,7 +253,7 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
   // decode stage
   val ibuf = Module(new IBuf)
   val id_expanded_inst = ibuf.io.inst.map(_.bits.inst)
-  val id_raw_inst = ibuf.io.inst.map(_.bits.raw)
+  val id_raw_inst = ibuf.io.inst.map(_.bits.raw) // how is raw_inst made and why is it used?
   val id_inst = id_expanded_inst.map(_.bits)
   ibuf.io.imem <> io.imem.resp
   ibuf.io.kill := take_pc
@@ -265,6 +265,9 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
   val regAddrMask = (1 << lgNXRegs) - 1
 
   def decodeReg(x: UInt) = (x.extract(x.getWidth-1, lgNXRegs).asBool, x(lgNXRegs-1, 0))
+    // legal only when getWidth == lgNXRegs.
+    // when getWidth(5) > lgNXRegs(4) && x[4] is 1, illegal.
+    // when getWidth < lgNXRegs, assertionError
   val (id_raddr3_illegal, id_raddr3) = decodeReg(id_expanded_inst(0).rs3)
   val (id_raddr2_illegal, id_raddr2) = decodeReg(id_expanded_inst(0).rs2)
   val (id_raddr1_illegal, id_raddr1) = decodeReg(id_expanded_inst(0).rs1)
@@ -278,8 +281,18 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
   val id_rs = id_raddr.map(rf.read _)
   val ctrl_killd = Wire(Bool())
   val id_npc = (ibuf.io.pc.asSInt + ImmGen(IMM_UJ, id_inst(0))).asUInt
+    /* if IMM_UJ,
+    sign = inst(31).asSInt
+    b30_20 = sign
+    b19_12 = inst(19,12).asSInt
+    b11 = inst(20).asSInt
+    b10_5 = inst(30,25)
+    b4_1 = inst(24,21)
+    b0 = Bits(0)
+    */
 
-  val csr = Module(new CSRFile(perfEvents, coreParams.customCSRs.decls))
+    // TODO(VINN): look after CSR
+    val csr = Module(new CSRFile(perfEvents, coreParams.customCSRs.decls))
   val id_csr_en = id_ctrl.csr.isOneOf(CSR.S, CSR.C, CSR.W)
   val id_system_insn = id_ctrl.csr === CSR.I
   val id_csr_ren = id_ctrl.csr.isOneOf(CSR.S, CSR.C) && id_raddr1 === UInt(0)
@@ -287,7 +300,8 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
   val id_sfence = id_ctrl.mem && id_ctrl.mem_cmd === M_SFENCE
   val id_csr_flush = id_sfence || id_system_insn || (id_csr_en && !id_csr_ren && csr.io.decode(0).write_flush)
 
-  val id_scie_decoder = if (!rocketParams.useSCIE) Wire(new SCIEDecoderInterface) else {
+    // TODO(VINN): look after SCIE
+    val id_scie_decoder = if (!rocketParams.useSCIE) Wire(new SCIEDecoderInterface) else {
     val d = Module(new SCIEDecoder)
     assert(PopCount(d.io.unpipelined :: d.io.pipelined :: d.io.multicycle :: Nil) <= 1)
     d.io.insn := id_raw_inst(0)
@@ -307,7 +321,8 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
     id_csr_en && (csr.io.decode(0).read_illegal || !id_csr_ren && csr.io.decode(0).write_illegal) ||
     !ibuf.io.inst(0).bits.rvc && ((id_sfence || id_system_insn) && csr.io.decode(0).system_illegal)
   // stall decode for fences (now, for AMO.rl; later, for AMO.aq and FENCE)
-  val id_amo_aq = id_inst(0)(26)
+    // TODO(VINN): look after atomic
+    val id_amo_aq = id_inst(0)(26)
   val id_amo_rl = id_inst(0)(25)
   val id_fence_pred = id_inst(0)(27,24)
   val id_fence_succ = id_inst(0)(23,20)
@@ -350,6 +365,7 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
   ) else Nil)
   coverExceptions(id_xcpt, id_cause, "DECODE", idCoverCauses)
 
+    // TODO(VINN): look after dmem
   val dcache_bypass_data =
     if (fastLoadByte) io.dmem.resp.bits.data(xLen-1, 0)
     else if (fastLoadWord) io.dmem.resp.bits.data_word_bypass(xLen-1, 0)
@@ -365,6 +381,7 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
     (mem_reg_valid && mem_ctrl.wxd && !mem_ctrl.mem, mem_waddr, wb_reg_wdata),
     (mem_reg_valid && mem_ctrl.wxd, mem_waddr, dcache_bypass_data))
   val id_bypass_src = id_raddr.map(raddr => bypass_sources.map(s => s._1 && s._2 === raddr))
+    // whether rs1, rs2 needs forwarding from different bypass_sources. (2x4 boolean entries)
 
   // execute stage
   val bypass_mux = bypass_sources.map(_._3)

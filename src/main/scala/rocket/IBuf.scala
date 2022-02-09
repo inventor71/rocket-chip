@@ -18,6 +18,7 @@ class Instruction(implicit val p: Parameters) extends ParameterizedBundle with H
   require(coreInstBits == (if (usingCompressed) 16 else 32))
 }
 
+// TODO(VINN): look after Frontend
 class IBuf(implicit p: Parameters) extends CoreModule {
   val io = new Bundle {
     val imem = Decoupled(new FrontendResp).flip
