@@ -15,3 +15,6 @@ docs-target/
 rocketchip.jar
 project/
 .metals/
+.idea/
+src/main/scala/scala.iml
+src/main/scala/.idea/
