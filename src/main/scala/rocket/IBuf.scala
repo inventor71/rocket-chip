@@ -10,7 +10,7 @@ import freechips.rocketchip.util._
 
 class Instruction(implicit val p: Parameters) extends ParameterizedBundle with HasCoreParameters {
   val xcpt0 = new FrontendExceptions // exceptions on first half of instruction
-  val xcpt1 = new FrontendExceptions // exceptions on second half of instruction
+  val xcpt1 = new FrontendExceptions // exceptions on second half of instruction (set to 0 when not RVC)
   val replay = Bool()
   val rvc = Bool()
   val inst = new ExpandedInstruction
@@ -18,6 +18,7 @@ class Instruction(implicit val p: Parameters) extends ParameterizedBundle with H
   require(coreInstBits == (if (usingCompressed) 16 else 32))
 }
 
+// TODO(VINN): look after Frontend
 class IBuf(implicit p: Parameters) extends CoreModule {
   val io = new Bundle {
     val imem = Decoupled(new FrontendResp).flip
