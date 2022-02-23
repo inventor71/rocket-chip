@@ -251,7 +251,7 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
   val take_pc = take_pc_mem_wb
 
   // decode stage
-    // TODO(VINN): look after reading RVC spec.
+  // TODO(VINN): look after reading RVC spec.
   val ibuf = Module(new IBuf)
   val id_expanded_inst = ibuf.io.inst.map(_.bits.inst)
   val id_raw_inst = ibuf.io.inst.map(_.bits.raw) // how is raw_inst made and why is it used?
@@ -292,8 +292,8 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
     b0 = Bits(0)
     */
 
-    // TODO(VINN): look after CSR
-    val csr = Module(new CSRFile(perfEvents, coreParams.customCSRs.decls))
+  // TODO(VINN): look after CSR
+  val csr = Module(new CSRFile(perfEvents, coreParams.customCSRs.decls))
   val id_csr_en = id_ctrl.csr.isOneOf(CSR.S, CSR.C, CSR.W)
   val id_system_insn = id_ctrl.csr === CSR.I
   val id_csr_ren = id_ctrl.csr.isOneOf(CSR.S, CSR.C) && id_raddr1 === UInt(0)
@@ -301,8 +301,8 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
   val id_sfence = id_ctrl.mem && id_ctrl.mem_cmd === M_SFENCE
   val id_csr_flush = id_sfence || id_system_insn || (id_csr_en && !id_csr_ren && csr.io.decode(0).write_flush)
 
-    // TODO(VINN): look after SCIE
-    val id_scie_decoder = if (!rocketParams.useSCIE) Wire(new SCIEDecoderInterface) else {
+  // TODO(VINN): look after SCIE
+  val id_scie_decoder = if (!rocketParams.useSCIE) Wire(new SCIEDecoderInterface) else {
     val d = Module(new SCIEDecoder)
     assert(PopCount(d.io.unpipelined :: d.io.pipelined :: d.io.multicycle :: Nil) <= 1)
     d.io.insn := id_raw_inst(0)
@@ -322,8 +322,8 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
     id_csr_en && (csr.io.decode(0).read_illegal || !id_csr_ren && csr.io.decode(0).write_illegal) ||
     !ibuf.io.inst(0).bits.rvc && ((id_sfence || id_system_insn) && csr.io.decode(0).system_illegal)
   // stall decode for fences (now, for AMO.rl; later, for AMO.aq and FENCE)
-    // TODO(VINN): look after atomic
-    val id_amo_aq = id_inst(0)(26)
+  // TODO(VINN): look after atomic
+  val id_amo_aq = id_inst(0)(26)
   val id_amo_rl = id_inst(0)(25)
   val id_fence_pred = id_inst(0)(27,24)
   val id_fence_succ = id_inst(0)(23,20)
@@ -366,7 +366,7 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
   ) else Nil)
   coverExceptions(id_xcpt, id_cause, "DECODE", idCoverCauses)
 
-    // TODO(VINN): look after dmem
+  // TODO(VINN): look after dmem
   val dcache_bypass_data =
     if (fastLoadByte) io.dmem.resp.bits.data(xLen-1, 0)
     else if (fastLoadWord) io.dmem.resp.bits.data_word_bypass(xLen-1, 0)
