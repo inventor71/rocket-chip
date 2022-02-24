@@ -11,20 +11,20 @@ object ALU
 {
   val SZ_ALU_FN = 4
   def FN_X    = BitPat("b????")
-  def FN_ADD  = UInt(0)
-  def FN_SL   = UInt(1)
-  def FN_SEQ  = UInt(2)
-  def FN_SNE  = UInt(3)
-  def FN_XOR  = UInt(4)
-  def FN_SR   = UInt(5)
-  def FN_OR   = UInt(6)
-  def FN_AND  = UInt(7)
-  def FN_SUB  = UInt(10)
-  def FN_SRA  = UInt(11)
-  def FN_SLT  = UInt(12)
-  def FN_SGE  = UInt(13)
-  def FN_SLTU = UInt(14)
-  def FN_SGEU = UInt(15)
+  def FN_ADD  = UInt(0) // 0000
+  def FN_SL   = UInt(1) // 0001
+  def FN_SEQ  = UInt(2) // 0010
+  def FN_SNE  = UInt(3) // 0011
+  def FN_XOR  = UInt(4) // 0100
+  def FN_SR   = UInt(5) // 0101
+  def FN_OR   = UInt(6) // 0110
+  def FN_AND  = UInt(7) // 0111
+  def FN_SUB  = UInt(10) // 1010, below methods are isSub
+  def FN_SRA  = UInt(11) // 1011
+  def FN_SLT  = UInt(12) // 1100, below methods are isCmp
+  def FN_SGE  = UInt(13) // 1101
+  def FN_SLTU = UInt(14) // 1110
+  def FN_SGEU = UInt(15) // 1111
 
   def FN_DIV  = FN_XOR
   def FN_DIVU = FN_SR
@@ -62,13 +62,13 @@ class ALU(implicit p: Parameters) extends CoreModule()(p) {
   val in1_xor_in2 = io.in1 ^ in2_inv
   io.adder_out := io.in1 + in2_inv + isSub(io.fn)
 
-  // SLT, SLTU
+  // SLT, SLTU (set less than)
   val slt =
     Mux(io.in1(xLen-1) === io.in2(xLen-1), io.adder_out(xLen-1),
     Mux(cmpUnsigned(io.fn), io.in2(xLen-1), io.in1(xLen-1)))
   io.cmp_out := cmpInverted(io.fn) ^ Mux(cmpEq(io.fn), in1_xor_in2 === UInt(0), slt)
 
-  // SLL, SRL, SRA
+  // SLL, SRL, SRA (shifts)
   val (shamt, shin_r) =
     if (xLen == 32) (io.in2(4,0), io.in1)
     else {
