@@ -406,6 +406,7 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
   alu.io.in2 := ex_op2.asUInt
   alu.io.in1 := ex_op1.asUInt
 
+  // TODO(VINN): read after SCIE
   val ex_scie_unpipelined_wdata = if (!rocketParams.useSCIE) 0.U else {
     val u = Module(new SCIEUnpipelined(xLen))
     u.io.insn := ex_reg_inst
@@ -444,6 +445,7 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
   ex_reg_xcpt_interrupt := !take_pc && ibuf.io.inst(0).valid && csr.io.interrupt
 
   when (!ctrl_killd) {
+    // TODO(VINN): understand exception control better than read again (add markdown)
     ex_ctrl := id_ctrl
     ex_reg_rvc := ibuf.io.inst(0).bits.rvc
     ex_ctrl.csr := id_csr
@@ -468,7 +470,7 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
     }
     ex_reg_flush_pipe := id_ctrl.fence_i || id_csr_flush
     ex_reg_load_use := id_load_use
-    ex_reg_mem_size := id_inst(0)(13, 12)
+    ex_reg_mem_size := id_inst(0)(13, 12) // funct3 in LB, LH, LW
     when (id_ctrl.mem_cmd.isOneOf(M_SFENCE, M_FLUSH_ALL)) {
       ex_reg_mem_size := Cat(id_raddr2 =/= UInt(0), id_raddr1 =/= UInt(0))
     }
@@ -480,7 +482,7 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
 
     for (i <- 0 until id_raddr.size) {
       val do_bypass = id_bypass_src(i).reduce(_||_)
-      val bypass_src = PriorityEncoder(id_bypass_src(i))
+      val bypass_src = PriorityEncoder(id_bypass_src(i)) // gets the highest priority src idx (lowest bit with "1")
       ex_reg_rs_bypass(i) := do_bypass
       ex_reg_rs_lsb(i) := bypass_src
       when (id_ren(i) && !do_bypass) {
@@ -492,10 +494,11 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
       val inst = Mux(ibuf.io.inst(0).bits.rvc, id_raw_inst(0)(15, 0), id_raw_inst(0))
       ex_reg_rs_bypass(0) := false
       ex_reg_rs_lsb(0) := inst(log2Ceil(bypass_sources.size)-1, 0)
-      ex_reg_rs_msb(0) := inst >> log2Ceil(bypass_sources.size)
+      ex_reg_rs_msb(0) := inst >> log2Ceil(bypass_sources.size) // set rs1 value as inst. TODO(VINN): why set to inst?
     }
   }
   when (!ctrl_killd || csr.io.interrupt || ibuf.io.inst(0).bits.replay) {
+    // TODO(VINN): understand exception control better than read again (add markdown)
     ex_reg_cause := id_cause
     ex_reg_inst := id_inst(0)
     ex_reg_raw_inst := id_raw_inst(0)
@@ -511,8 +514,9 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
                              ex_ctrl.div && !div.io.req.ready
   val replay_ex_load_use = wb_dcache_miss && ex_reg_load_use
   val replay_ex = ex_reg_replay || (ex_reg_valid && (replay_ex_structural || replay_ex_load_use))
-  val ctrl_killx = take_pc_mem_wb || replay_ex || !ex_reg_valid
+  val ctrl_killx = take_pc_mem_wb || replay_ex || !ex_reg_valid // when HIGH, following mem stage is not valid
   // detect 2-cycle load-use delay for LB/LH/SC
+  // TODO(VINN): examine slow_bypass controls (investigate LB instruction execution flow)
   val ex_slow_bypass = ex_ctrl.mem_cmd === M_XSC || ex_reg_mem_size < 2
   val ex_sfence = Bool(usingVM) && ex_ctrl.mem && ex_ctrl.mem_cmd === M_SFENCE
 
