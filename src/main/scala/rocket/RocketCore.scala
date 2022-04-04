@@ -476,7 +476,7 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
     }
     if (tile.dcache.flushOnFenceI) {
       when (id_ctrl.fence_i) {
-        ex_reg_mem_size := 0
+        ex_reg_mem_size := 0 // TODO(VINN): How does this flush?
       }
     }
 
@@ -538,12 +538,12 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
     Mux(ibuf.io.inst(0).valid || ibuf.io.imem.valid, mem_npc =/= ibuf.io.pc, Bool(true)))
   val mem_npc_misaligned = !csr.io.status.isa('c'-'a') && mem_npc(1) && !mem_reg_sfence
   val mem_int_wdata = Mux(!mem_reg_xcpt && (mem_ctrl.jalr ^ mem_npc_misaligned), mem_br_target, mem_reg_wdata.asSInt).asUInt
-  val mem_cfi = mem_ctrl.branch || mem_ctrl.jalr || mem_ctrl.jal
+  val mem_cfi = mem_ctrl.branch || mem_ctrl.jalr || mem_ctrl.jal // control flow instruction
   val mem_cfi_taken = (mem_ctrl.branch && mem_br_taken) || mem_ctrl.jalr || mem_ctrl.jal
   val mem_direction_misprediction = mem_ctrl.branch && mem_br_taken =/= (usingBTB && mem_reg_btb_resp.taken)
   val mem_misprediction = if (usingBTB) mem_wrong_npc else mem_cfi_taken
   take_pc_mem := mem_reg_valid && (mem_misprediction || mem_reg_sfence)
-
+lj
   mem_reg_valid := !ctrl_killx
   mem_reg_replay := !take_pc_mem_wb && replay_ex
   mem_reg_xcpt := !ctrl_killx && ex_xcpt
@@ -612,6 +612,7 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
 
   // writeback stage
   wb_reg_valid := !ctrl_killm
+   // take_pc_wb := replay_wb || wb_xcpt || csr.io.eret || wb_reg_flush_pipe
   wb_reg_replay := replay_mem && !take_pc_wb
   wb_reg_xcpt := mem_xcpt && !take_pc_wb
   wb_reg_flush_pipe := !ctrl_killm && mem_reg_flush_pipe
@@ -668,7 +669,7 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
   val dmem_resp_valid = io.dmem.resp.valid && io.dmem.resp.bits.has_data
   val dmem_resp_replay = dmem_resp_valid && io.dmem.resp.bits.replay
 
-  div.io.resp.ready := !wb_wxd
+  div.io.resp.ready := !wb_wxd // do not send response if other instruction is writing back
   val ll_wdata = Wire(init = div.io.resp.bits.data)
   val ll_waddr = Wire(init = div.io.resp.bits.tag)
   val ll_wen = Wire(init = div.io.resp.fire())
@@ -696,7 +697,7 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
   val rf_wdata = Mux(dmem_resp_valid && dmem_resp_xpu, io.dmem.resp.bits.data(xLen-1, 0),
                  Mux(ll_wen, ll_wdata,
                  Mux(wb_ctrl.csr =/= CSR.N, csr.io.rw.rdata,
-                 Mux(wb_ctrl.mul, mul.map(_.io.resp.bits.data).getOrElse(wb_reg_wdata),
+                 Mux(wb_ctrl.mul, mul.map(_.io.resp.bits.data).getOrElse(wb_reg_wdata), // mul.map: Some or None(?) / pipelinedMul==false?
                  wb_reg_wdata))))
   when (rf_wen) { rf.write(rf_waddr, rf_wdata) }
 
@@ -741,7 +742,7 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
                               (io.fpu.dec.ren3, id_raddr3),
                               (io.fpu.dec.wen, id_waddr))
 
-  val sboard = new Scoreboard(32, true)
+  val sboard = new Scoreboard(32, true) // zero: x0 == 0; each bit for each register file entry
   sboard.clear(ll_wen, ll_waddr)
   def id_sboard_clear_bypass(r: UInt) = {
     // ll_waddr arrives late when D$ has ECC, so reshuffle the hazard check
@@ -749,7 +750,7 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
     else div.io.resp.fire() && div.io.resp.bits.tag === r || dmem_resp_replay && dmem_resp_xpu && dmem_resp_waddr === r
   }
   val id_sboard_hazard = checkHazards(hazard_targets, rd => sboard.read(rd) && !id_sboard_clear_bypass(rd))
-  sboard.set(wb_set_sboard && wb_wen, wb_waddr)
+  sboard.set(wb_set_sboard && wb_wen, wb_waddr) // set sboard for long-latency yet unfinished instructions at WB stage
 
   // stall for RAW/WAW hazards on CSRs, loads, AMOs, and mul/div in execute stage.
   val ex_cannot_bypass = ex_ctrl.csr =/= CSR.N || ex_ctrl.jalr || ex_ctrl.mem || ex_ctrl.mul || ex_ctrl.div || ex_ctrl.fp || ex_ctrl.rocc || ex_scie_pipelined
@@ -1009,7 +1010,7 @@ class Rocket(tile: RocketTile)(implicit p: Parameters) extends CoreModule()(p)
     // efficient means to compress 64-bit VA into vaddrBits+1 bits
     // (VA is bad if VA(vaddrBits) != VA(vaddrBits-1))
     val a = a0.asSInt >> vaddrBits
-    val msb = Mux(a === 0.S || a === -1.S, ea(vaddrBits), !ea(vaddrBits-1))
+    val msb = Mux(a === 0.S || a === -1.S, ea(b), !ea(vaddrBits-1))
     Cat(msb, ea(vaddrBits-1,0))
   }
 

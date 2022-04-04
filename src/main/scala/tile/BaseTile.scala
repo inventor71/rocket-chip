@@ -154,6 +154,7 @@ trait HasTileParameters extends HasNonDiplomaticTileParameters {
     if (usingVM) {
       val v = maxSVAddrBits
       require(v == xLen || xLen > v && v > paddrBits)
+      // require(false, s"xLen = $xLen, vaddrBits = $v, paddrBits = $paddrBits")
       v
     } else {
       // since virtual addresses sign-extend but physical addresses

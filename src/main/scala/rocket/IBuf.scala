@@ -32,7 +32,7 @@ class IBuf(implicit p: Parameters) extends CoreModule {
   require(decodeWidth == 1)
 
   val n = fetchWidth - 1
-  val nBufValid = if (n == 0) UInt(0) else Reg(init=UInt(0, log2Ceil(fetchWidth))) // fetchWidth == 1 or 2
+  val nBufValid = if (n == 0) UInt(0) else Reg(init=UInt(0, log2Ceil(fetchWidth))) // fetchWidth == 1(default) or 2 (Compressed)
   val buf = Reg(io.imem.bits)
   val ibufBTBResp = Reg(new BTBResp)
   val pcWordMask = UInt(coreInstBytes*fetchWidth-1, vaddrBitsExtended)
